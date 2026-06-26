@@ -1,16 +1,44 @@
 # QueueStorm Investigator
 
-QueueStorm Investigator is a lightweight FastAPI service for the SUST CSE Carnival 2026 Codex Community Hackathon preliminary problem. It analyzes synthetic digital finance support tickets, investigates the complaint against transaction history, and returns a safe structured support-ops response.
+We built QueueStorm Investigator for the SUST CSE Carnival 2026 Codex Community Hackathon preliminary round. Our goal is to provide a lightweight support-ops copilot for synthetic digital finance tickets. The API reads a customer complaint, checks it against transaction history, classifies the case, and returns a safe structured response for support teams.
 
-The default implementation is deterministic and rule-based. It does not require paid AI APIs, GPU access, large model downloads, or real payment integrations.
+We intentionally kept the solution deterministic, fast, and local. The default path does not use paid AI APIs, external model calls, GPU resources, or real payment integrations.
 
 ## Tech Stack
 
 - Python 3.12+
-- FastAPI
-- Pydantic
-- Uvicorn
-- Pure-Python deterministic reasoning for classification, evidence matching, and safety filtering
+- FastAPI for the HTTP API
+- Pydantic for request and response validation
+- Uvicorn as the ASGI server
+- Docker for packaging and deployment
+- Pure-Python rule-based reasoning for classification, evidence matching, and safety filtering
+
+## MODELS
+
+We do not use any external AI model by default.
+
+- Default mode: deterministic rule-based investigator.
+- Model provider: none.
+- API keys required: none.
+- Runtime internet access required: no.
+- Paid AI APIs required: no.
+- Optional LLM support: not enabled. `ENABLE_LLM=false` is reserved only for future extension.
+
+For judging, our submitted behavior is fully local and deterministic.
+
+## AI Approach
+
+Our approach is to simulate an AI support copilot with transparent rules instead of relying on a black-box model. We classify the ticket, inspect transaction evidence, decide whether the complaint is supported by the data, and generate a guarded customer reply.
+
+Our reasoning flow:
+
+1. We normalize complaint text, including Bangla digits.
+2. We detect phishing or social-engineering first because safety has priority over normal routing.
+3. We classify the complaint into one of the allowed case types.
+4. We score transaction matches using transaction type, amount, status, counterparty, date/time hints, and complaint semantics.
+5. We return `insufficient_data` instead of guessing when evidence is missing or multiple transactions are plausible.
+6. We generate the support summary, next action, customer reply, confidence, and reason codes.
+7. We run a final safety filter before returning the response.
 
 ## API
 
@@ -66,13 +94,14 @@ Response fields:
 
 Malformed JSON or missing required fields return `400` with a non-sensitive JSON error. Empty complaints return `422`.
 
-## Local Run
+## Setup
+
+From the project folder:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 On Windows PowerShell:
@@ -81,25 +110,95 @@ On Windows PowerShell:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+## Run Locally
+
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+On Windows PowerShell after activating `.venv`:
+
+```powershell
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
 ## Docker
+
+Build and run:
 
 ```bash
 docker build -t queuestorm-investigator .
 docker run --rm -p 8000:8000 -e PORT=8000 queuestorm-investigator
 ```
 
-## Test
+The API will be available at:
 
-The public sample cases can be tested without installing FastAPI:
+```text
+http://127.0.0.1:8000
+```
+
+## Runbook
+
+### Start Locally
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Start With Docker
+
+```bash
+docker build -t queuestorm-investigator .
+docker run -d --restart unless-stopped -p 8000:8000 --name queuestorm queuestorm-investigator
+```
+
+### Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+### Analyze A Ticket
+
+```bash
+curl -X POST http://localhost:8000/analyze-ticket \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_id":"TKT-006","complaint":"Something is wrong with my money. Please check.","transaction_history":[]}'
+```
+
+### Update A Docker Deployment
+
+```bash
+git pull
+docker stop queuestorm
+docker rm queuestorm
+docker build -t queuestorm-investigator .
+docker run -d --restart unless-stopped -p 8000:8000 --name queuestorm queuestorm-investigator
+```
+
+## Testing
+
+We included a public sample regression script:
 
 ```bash
 python scripts/test_samples.py
 ```
 
-After the server is running:
+After the server is running, we can also test with curl:
 
 ```bash
 curl http://localhost:8000/health
@@ -110,47 +209,73 @@ curl -X POST http://localhost:8000/analyze-ticket \
 
 ## Environment Variables
 
-- `PORT`: server port, default `8000`
-- `ENABLE_LLM`: reserved for future optional LLM support, default `false`
-- `LOG_LEVEL`: reserved for deployment logging, default `info`
+- `PORT`: server port, default `8000`.
+- `ENABLE_LLM`: reserved for future optional LLM support, default `false`.
+- `LOG_LEVEL`: reserved for deployment logging, default `info`.
 
 ## Safety Logic
 
-The service treats complaint text as untrusted data. Prompt-injection phrases such as "ignore previous instructions" are ignored and may be added to `reason_codes`.
+We treat complaint text as untrusted user input. If a complaint contains prompt-injection text such as "ignore previous instructions" or "ask user for OTP", we ignore that instruction and continue normal analysis.
 
-Customer replies are passed through a final safety filter. Replies must never ask for PIN, OTP, password, passcode, full card number, or other secret credentials. The service also avoids unauthorized promises such as "we will refund you", "your money has been reversed", or "your account has been unblocked".
+Our customer replies go through a final safety filter. We never ask for:
 
-Safe language uses phrases such as:
+- PIN
+- OTP
+- Password
+- Passcode
+- Full card number
+- Secret credentials
+
+We also avoid unauthorized promises. Our API should not claim that a refund, reversal, recovery, or account unblock has already happened unless that authority is present in the input, which it is not for this challenge.
+
+Safe wording we use:
 
 - "Please do not share your PIN or OTP with anyone."
 - "Any eligible amount will be returned through official channels."
 - "Refund eligibility depends on merchant or policy confirmation."
 - "We will verify the transaction before taking further action."
 
-Bangla complaints receive Bangla customer replies when `language` is `bn` or the complaint is mostly Bangla.
+For Bangla complaints, we return Bangla customer replies when `language` is `bn` or the complaint is mostly Bangla.
 
 ## Evidence Reasoning
 
-The investigator is more than a classifier. It:
+We designed the service to be more than a keyword classifier. It compares the complaint with transaction history and explains its decision through `evidence_verdict`, `confidence`, and `reason_codes`.
 
-- Detects high-priority phishing/social-engineering cases first.
-- Extracts amounts, Bangla digits, phone/counterparty hints, and basic date/time hints.
-- Scores transaction matches by type, amount, status, counterparty, recency, and complaint semantics.
-- Returns `insufficient_data` when multiple transactions plausibly match.
-- Marks wrong-transfer claims as `inconsistent` when prior transfers indicate an established recipient pattern.
-- Detects duplicate payments by finding same amount, same merchant/biller, completed payment pairs close in time.
+Our evidence checks include:
 
-## Known Limitations
+- High-priority phishing and social-engineering detection.
+- Amount extraction, including Bangla digits.
+- Phone and counterparty hint extraction.
+- Basic date/time hints such as "today", "yesterday", and simple hour references.
+- Transaction scoring by type, amount, status, counterparty, and complaint semantics.
+- Ambiguity detection when multiple transactions plausibly match.
+- Inconsistent-evidence detection, such as repeated transfers to the same recipient during a wrong-transfer claim.
+- Duplicate payment detection using same amount, same counterparty, completed status, and close timestamps.
 
-- This is a rule-based hackathon solution, not a real financial decision engine.
-- Date reasoning is intentionally simple and uses transaction history as the reference window for words like "today" and "yesterday".
-- Bangla/Banglish handling covers the expected problem vocabulary but is not a full natural-language parser.
-- No real customer data, real payment operations, or production secrets are included.
+## Assumptions
+
+- We assume the input tickets are synthetic hackathon cases, not real customer data.
+- We treat `transaction_history` as structured evidence.
+- We treat complaint text as untrusted user-provided text.
+- We prefer `insufficient_data` over guessing when the evidence is ambiguous.
+- We treat amount `>= 5000` BDT as high value unless a stronger case-specific rule applies.
+- We interpret words like "today" and "yesterday" relative to the available transaction history instead of the server clock.
+- We generate safe support guidance only; we do not perform real refunds, reversals, account unblocks, or payment operations.
+
+## Limitations
+
+- Our solution is a rule-based hackathon implementation, not a real financial decision engine.
+- Date reasoning is intentionally simple.
+- Bangla and Banglish handling focuses on the expected problem vocabulary, not full natural-language understanding.
+- We do not integrate with real payment ledgers, customer accounts, fraud tools, or merchant systems.
+- We do not store or process real customer data.
+- We do not commit secrets or require runtime secrets.
 
 ## Deployment Notes
 
-- Bind to `0.0.0.0`.
-- Default port is `8000`.
-- Keep `ENABLE_LLM=false` for judging unless a separate optional integration is added.
-- Do not commit secrets or real customer data.
-- Run `python scripts/test_samples.py` before submitting.
+- We bind the service to `0.0.0.0`.
+- The default port is `8000`.
+- For judging, we keep `ENABLE_LLM=false`.
+- Before submitting, we run `python scripts/test_samples.py`.
+- For a public deployment, we submit the deployed base URL plus `/health` and `/analyze-ticket`.
+
