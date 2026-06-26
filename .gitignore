@@ -6,4 +6,9 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+uvicorn.*.log
+uvicorn.pid
+*.log
+.vercel/
 
+.vercel

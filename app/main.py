@@ -71,4 +71,3 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def error_response(status_code: int, code: str, message: str) -> JSONResponse:
     content: dict[str, Any] = {"error": {"code": code, "message": message}}
     return JSONResponse(status_code=status_code, content=content)
-

@@ -11,7 +11,19 @@ We intentionally kept the solution deterministic, fast, and local. The default p
 - Pydantic for request and response validation
 - Uvicorn as the ASGI server
 - Docker for packaging and deployment
+- Vercel Python Runtime support through `pyproject.toml`
 - Pure-Python rule-based reasoning for classification, evidence matching, and safety filtering
+
+## Submission Deliverables
+
+- GitHub repository: this full project folder should be pushed as our final source repo.
+- Live endpoint URL: our deployed base URL, for example `https://YOUR_PROJECT.vercel.app`.
+- Docker/runbook: this README and the included `Dockerfile`.
+- Vercel config: `pyproject.toml` and `.vercelignore`.
+- Dependency file: `requirements.txt`.
+- Sample output file: `sample_output.json`.
+- Main API files: `app/main.py`, `app/models.py`, `app/reasoning.py`, `app/safety.py`, `app/utils.py`.
+- Public sample regression script: `scripts/test_samples.py`.
 
 ## MODELS
 
@@ -145,6 +157,38 @@ The API will be available at:
 http://127.0.0.1:8000
 ```
 
+## Vercel Deployment
+
+Vercel does not run this project through the `Dockerfile`. For Vercel, we deploy the FastAPI app through Vercel's Python runtime. We keep `Dockerfile` for container hosts, while Vercel uses `app.main:app` from `pyproject.toml`.
+
+Install and log in to the Vercel CLI:
+
+```bash
+npm install -g vercel
+vercel login
+```
+
+Preview deploy:
+
+```bash
+vercel
+```
+
+Production deploy:
+
+```bash
+vercel --prod
+```
+
+After deployment, test the returned Vercel URL:
+
+```bash
+curl https://YOUR_PROJECT.vercel.app/health
+curl -X POST https://YOUR_PROJECT.vercel.app/analyze-ticket \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_id":"TKT-006","complaint":"Something is wrong with my money. Please check.","transaction_history":[]}'
+```
+
 ## Runbook
 
 ### Start Locally
@@ -158,6 +202,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```bash
 docker build -t queuestorm-investigator .
 docker run -d --restart unless-stopped -p 8000:8000 --name queuestorm queuestorm-investigator
+```
+
+### Start On Vercel
+
+```bash
+vercel --prod
 ```
 
 ### Health Check
@@ -188,6 +238,13 @@ docker stop queuestorm
 docker rm queuestorm
 docker build -t queuestorm-investigator .
 docker run -d --restart unless-stopped -p 8000:8000 --name queuestorm queuestorm-investigator
+```
+
+### Update A Vercel Deployment
+
+```bash
+git push
+vercel --prod
 ```
 
 ## Testing
@@ -275,7 +332,7 @@ Our evidence checks include:
 
 - We bind the service to `0.0.0.0`.
 - The default port is `8000`.
+- On Vercel, we deploy through the Python runtime rather than the Dockerfile.
 - For judging, we keep `ENABLE_LLM=false`.
 - Before submitting, we run `python scripts/test_samples.py`.
 - For a public deployment, we submit the deployed base URL plus `/health` and `/analyze-ticket`.
-

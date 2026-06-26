@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+uvicorn.*.log
+uvicorn.pid
+*.log
+SUST_Hackathon_Preli_Problem_Statement.pdf
+SUST_Preli_Evaluation_Rubric_With_Explanations.pdf
+SUST_Preli_Team_Instructions_Manual.pdf
+
