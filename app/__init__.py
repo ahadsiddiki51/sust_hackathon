@@ -1,0 +1,2 @@
+"""QueueStorm Investigator application package."""
+
