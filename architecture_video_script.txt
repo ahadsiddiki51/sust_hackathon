@@ -1,0 +1,78 @@
+================================================================================
+QUEUESTORM INVESTIGATOR - 90-SECOND ARCHITECTURE VIDEO SCRIPT
+================================================================================
+
+[0:00 - 0:15] Slide 1: Introduction & High-Level Goal
+--------------------------------------------------------------------------------
+Visual: Title slide showing "QueueStorm Investigator" logo, tech stack icons 
+        (Python, FastAPI, Docker, Vercel).
+
+Voiceover:
+"Hi everyone, this is Team JU_Zero_One, presenting QueueStorm Investigator—our 
+high-performance, deterministic copilot designed for the SUST CSE Carnival 2026 
+Codex Community Hackathon. Our service automates the analysis of digital 
+finance support tickets, investigating them against transaction histories to 
+return structured, safe support responses in under fifty milliseconds."
+
+
+[0:15 - 0:35] Slide 2: Solution Architecture & API Flow
+--------------------------------------------------------------------------------
+Visual: Flowchart showing: 
+        Client POST /analyze-ticket -> FastAPI Validation -> Reasoning Engine -> Safety Filter -> Vercel Serverless / Docker.
+
+Voiceover:
+"Built on Python 3.12, FastAPI, and Pydantic, our service is containerized with 
+Docker and deployed as a serverless function on Vercel. When a ticket hits 
+app/main.py, it validates the payload schema, extracts phone numbers and 
+amounts using localized regex patterns in app/utils.py, and forwards it to the 
+core reasoning engine."
+
+
+[0:35 - 1:00] Slide 3: Rule-Based Reasoning Engine
+--------------------------------------------------------------------------------
+Visual: Code snippets of detect_case_type or investigate_case in app/reasoning.py.
+
+Voiceover:
+"In app/reasoning.py, the ticket is classified into categories like wrong 
+transfer or duplicate payment. It ranks candidate transactions using a custom 
+scoring heuristic that weights timestamp recency, exact amount matches, and 
+matching counterparties. The engine detects wrong transfers, flags duplicate 
+payments close in time, and safely marks ambiguous matches as 'insufficient data' 
+instead of guessing."
+
+
+[1:00 - 1:15] Slide 4: AI & Model Decisions
+--------------------------------------------------------------------------------
+Visual: Text showing "No LLM Required by Default" with benefits: 
+        Latency: < 50ms, API Cost: $0, Scale: Serverless.
+
+Voiceover:
+"To guarantee ultra-low latency, zero execution cost, and deterministic 
+accuracy, we deliberately designed this as a pure-Python reasoning engine. 
+We avoid paid LLM APIs and heavy weights, ensuring one hundred percent 
+predictable classifications and zero hallucination risk, while reserving 
+an environment flag for future hybrid LLM expansions."
+
+
+[1:15 - 1:30] Slide 5: Safety Logic & Guardrails
+--------------------------------------------------------------------------------
+Visual: Code snippet of the safety check from app/safety.py filtering PIN/OTP strings.
+
+Voiceover:
+"Safety is a core pillar. In app/safety.py, we strip prompt-injection 
+instructions from complaints to prevent classification hijacking. Customer 
+replies are scanned to guarantee they never leak sensitive credentials like 
+PINs or OTPs, and they automatically replace unauthorized promises like 
+immediate refunds with legally safe, official support terminology."
+
+
+[1:30 - 1:40] Slide 6: Outro & Conclusion
+--------------------------------------------------------------------------------
+Visual: Link to GitHub repo: github.com/ahadsiddiki51/sust_hackathon 
+        and live endpoint domain.
+
+Voiceover:
+"With comprehensive robustness tests, full localization support for English 
+and Bangla, and bulletproof safety filters, QueueStorm Investigator is ready 
+for staging. Thank you!"
+================================================================================
